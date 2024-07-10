@@ -9,7 +9,14 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  shell,
+  ipcMain,
+  dialog,
+  MessageBoxOptions,
+} from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -19,7 +26,7 @@ class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
     autoUpdater.logger = log;
-    autoUpdater.checkForUpdatesAndNotify();
+    autoUpdater.checkForUpdates();
   }
 }
 
@@ -135,3 +142,36 @@ app
     });
   })
   .catch(console.log);
+
+autoUpdater.on('update-available', (info) => {
+  const dialogOpts: MessageBoxOptions = {
+    type: 'info',
+    buttons: ['Ok'],
+    title: 'Application Update',
+    message: (process.platform === 'win32'
+      ? info.releaseNotes
+      : info.releaseName) as string,
+    detail: 'A new version is being downloaded.',
+  };
+
+  dialog.showMessageBox(dialogOpts);
+});
+
+autoUpdater.on('update-downloaded', async (info) => {
+  const dialogOpts: MessageBoxOptions = {
+    type: 'info',
+    buttons: ['Restart', 'Later'],
+    title: 'Application Update',
+    message: (process.platform === 'win32'
+      ? info.releaseNotes
+      : info.releaseName) as string,
+    detail:
+      'A new version has been downloaded. Restart the application to apply the updates.',
+  };
+
+  const result = await dialog.showMessageBox(dialogOpts);
+
+  if (result.response === 0) {
+    autoUpdater.quitAndInstall();
+  }
+});
